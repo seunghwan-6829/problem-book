@@ -8,7 +8,7 @@ interface Problem {
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
   category: string;
-  createdAt: string;
+  created_at: string;
 }
 
 const difficultyColors = {
@@ -18,9 +18,9 @@ const difficultyColors = {
 };
 
 const difficultyLabels = {
-  easy: '쉬움',
-  medium: '보통',
-  hard: '어려움',
+  easy: '초급',
+  medium: '중급',
+  hard: '고급',
 };
 
 function ProblemDetail() {
@@ -55,7 +55,7 @@ function ProblemDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">문제를 찾을 수 없습니다.</p>
+          <p className="text-gray-500 mb-4">매매법을 찾을 수 없습니다.</p>
           <Link
             to="/"
             className="text-blue-600 hover:text-blue-700 underline"
@@ -68,19 +68,19 @@ function ProblemDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
       <Header />
 
       {/* Sub Header */}
-      <div className="border-b border-gray-100">
+      <div className="border-b border-gray-700">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <Link
             to="/"
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium mb-2 inline-block"
+            className="text-blue-400 hover:text-blue-300 text-sm font-medium mb-2 inline-block"
           >
             ← 목록으로
           </Link>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-white">
             {problem.title}
           </h1>
         </div>
@@ -95,36 +95,39 @@ function ProblemDetail() {
             >
               {difficultyLabels[problem.difficulty]}
             </span>
-            <span className="px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700">
+            <span className="px-4 py-2 bg-gray-700 rounded-full text-sm text-gray-300">
               {problem.category}
             </span>
           </div>
 
-          <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              문제 설명
+          {/* 매매법 설명 */}
+          <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              📖 매매법 설명
             </h2>
-            <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+            <div className="text-gray-300 leading-relaxed whitespace-pre-line font-mono text-sm">
               {problem.description}
-            </p>
+            </div>
           </div>
-        </div>
 
-        {/* Code Editor Placeholder */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-medium">코드 작성</h3>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-              제출
-            </button>
+          {/* 매매 팁 */}
+          <div className="bg-gradient-to-r from-green-900/50 to-blue-900/50 rounded-2xl p-6 border border-green-700/50">
+            <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+              💡 매매 팁
+            </h3>
+            <ul className="text-gray-300 space-y-2 text-sm">
+              <li>• 항상 손절라인을 미리 설정하세요</li>
+              <li>• 한 번에 전체 자금을 투입하지 마세요</li>
+              <li>• 패턴이 완성될 때까지 기다리세요</li>
+              <li>• 거래량을 함께 확인하세요</li>
+            </ul>
           </div>
-          <div className="bg-gray-950 rounded-lg p-4 min-h-[300px]">
-            <pre className="text-gray-400 text-sm font-mono">
-              {`// 여기에 코드를 작성하세요
-function solution() {
-  // ...
-}`}
-            </pre>
+
+          {/* 위험 경고 */}
+          <div className="mt-6 bg-red-900/30 rounded-xl p-4 border border-red-700/50">
+            <p className="text-red-400 text-sm flex items-center gap-2">
+              ⚠️ 투자에는 항상 위험이 따릅니다. 본 정보는 교육 목적이며 투자 조언이 아닙니다.
+            </p>
           </div>
         </div>
       </main>
@@ -133,4 +136,3 @@ function solution() {
 }
 
 export default ProblemDetail;
-

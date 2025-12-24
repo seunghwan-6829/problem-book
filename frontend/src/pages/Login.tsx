@@ -26,16 +26,16 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Problem Book</h1>
-          <p className="text-gray-600 mt-2">계정에 로그인하세요</p>
+          <h1 className="text-3xl font-bold text-white">📈 Coin Trading Guide</h1>
+          <p className="text-gray-400 mt-2">계정에 로그인하세요</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-gray-800 rounded-2xl shadow-lg border border-gray-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
