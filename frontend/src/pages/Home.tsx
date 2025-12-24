@@ -108,7 +108,7 @@ function Home() {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <h2 className="text-5xl font-bold mb-3">
+          <h2 className="text-5xl font-light mb-3">
             박본질 크립토
           </h2>
           <p className="text-blue-100 text-lg">
