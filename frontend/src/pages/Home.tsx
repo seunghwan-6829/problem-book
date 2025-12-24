@@ -108,8 +108,8 @@ function Home() {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <h2 className="text-5xl font-light mb-3">
-            페이지 준비 중
+          <h2 className="text-5xl font-medium mb-3">
+            박본질 크립토
           </h2>
           <p className="text-blue-100 text-lg">
             차트 패턴과 기술적 분석으로 성공적인 트레이딩을 시작하세요
