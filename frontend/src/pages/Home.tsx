@@ -8,13 +8,14 @@ interface Problem {
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
   category: string;
+  thumbnail_url?: string;
   created_at: string;
 }
 
 const difficultyColors = {
-  easy: 'bg-green-500/20 text-green-400 border border-green-500/30',
-  medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-  hard: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  easy: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  hard: 'bg-red-100 text-red-700',
 };
 
 const difficultyLabels = {
@@ -57,27 +58,27 @@ function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-400">로딩 중...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800">
+    <div className="min-h-screen bg-gray-50">
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-gray-800">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
         <div className="max-w-6xl mx-auto px-6 py-12">
-          <h2 className="text-4xl font-bold text-white mb-3">
-            📈 코인 매매법 가이드
+          <h2 className="text-4xl font-bold mb-3">
+            💎 박본질 크립토
           </h2>
-          <p className="text-gray-400 text-lg">
+          <p className="text-blue-100 text-lg">
             차트 패턴과 기술적 분석으로 성공적인 트레이딩을 시작하세요
           </p>
           <div className="mt-6 flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2 text-green-400">
+            <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
               {problems.length}개 매매법
             </div>
@@ -95,8 +96,8 @@ function Home() {
               onClick={() => setSelectedCategory(category)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
               {categoryIcons[category] || '📌'} {category}
@@ -104,49 +105,50 @@ function Home() {
           ))}
         </div>
 
-        {/* Trading Method List */}
-        <div className="grid gap-4">
+        {/* Grid Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProblems.map((problem) => (
             <Link
               key={problem.id}
               to={`/problems/${problem.id}`}
-              className="block bg-gray-800/50 rounded-2xl border border-gray-700 p-6 hover:bg-gray-800 hover:border-gray-600 transition-all duration-200 group"
+              className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{categoryIcons[problem.category] || '📌'}</span>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-blue-400 transition-colors">
-                      {problem.title}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[problem.difficulty]}`}
-                    >
-                      {difficultyLabels[problem.difficulty]}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 mb-3 line-clamp-2 pl-9">
-                    {problem.description.substring(0, 100)}...
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 pl-9">
-                    <span className="px-3 py-1 bg-gray-700/50 rounded-lg">
-                      {problem.category}
-                    </span>
-                  </div>
-                </div>
-                <svg
-                  className="w-6 h-6 text-gray-600 group-hover:text-blue-400 flex-shrink-0 ml-4 transition-colors"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
+              {/* Thumbnail */}
+              <div className="aspect-video bg-gradient-to-br from-blue-100 to-blue-50 relative overflow-hidden">
+                {problem.thumbnail_url ? (
+                  <img 
+                    src={problem.thumbnail_url} 
+                    alt={problem.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                </svg>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-6xl opacity-50">
+                      {categoryIcons[problem.category] || '📊'}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute top-3 left-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[problem.difficulty]}`}>
+                    {difficultyLabels[problem.difficulty]}
+                  </span>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{categoryIcons[problem.category] || '📌'}</span>
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {problem.category}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+                  {problem.title}
+                </h3>
+                <p className="text-gray-500 text-sm line-clamp-2">
+                  {problem.description.substring(0, 80)}...
+                </p>
               </div>
             </Link>
           ))}

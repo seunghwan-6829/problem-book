@@ -39,19 +39,26 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">📈 Coin Trading Guide</h1>
-          <p className="text-gray-400 mt-2">새 계정을 만드세요</p>
+          <Link to="/" className="inline-block">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
+              <span>💎</span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                박본질 크립토
+              </span>
+            </h1>
+          </Link>
+          <p className="text-gray-500 mt-2">새 계정을 만드세요</p>
         </div>
 
         {/* Register Card */}
-        <div className="bg-gray-800 rounded-2xl shadow-lg border border-gray-700 p-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm border border-red-200">
                 {error}
               </div>
             )}
@@ -155,4 +162,3 @@ function Register() {
 }
 
 export default Register;
-

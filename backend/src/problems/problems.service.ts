@@ -7,62 +7,19 @@ export interface Problem {
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
   category: string;
+  thumbnail_url?: string;
+  content_image_url?: string;
   created_at: string;
 }
 
 @Injectable()
 export class ProblemsService {
-  private memoryProblems: Problem[] = [
-    {
-      id: '1',
-      title: '두 수의 합',
-      description: '두 정수 a와 b를 입력받아 a + b를 반환하는 함수를 작성하세요.',
-      difficulty: 'easy',
-      category: '수학',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      title: '배열의 최댓값',
-      description: '정수 배열이 주어졌을 때, 최댓값을 찾는 함수를 작성하세요.',
-      difficulty: 'medium',
-      category: '배열',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      title: '이진 탐색',
-      description: '정렬된 배열에서 특정 값을 찾는 이진 탐색 알고리즘을 구현하세요.',
-      difficulty: 'hard',
-      category: '알고리즘',
-      created_at: new Date().toISOString(),
-    },
-  ];
+  private memoryProblems: Problem[] = [];
 
-  constructor(private supabaseService: SupabaseService) {
-    this.initializeProblems();
-  }
+  constructor(private supabaseService: SupabaseService) {}
 
   private get supabase() {
     return this.supabaseService.getClient();
-  }
-
-  private async initializeProblems() {
-    if (this.supabase) {
-      const { data } = await this.supabase.from('problems').select('id').limit(1);
-      
-      // 문제가 없으면 기본 문제 추가
-      if (!data || data.length === 0) {
-        for (const problem of this.memoryProblems) {
-          await this.supabase.from('problems').insert({
-            title: problem.title,
-            description: problem.description,
-            difficulty: problem.difficulty,
-            category: problem.category,
-          });
-        }
-      }
-    }
   }
 
   async findAll(): Promise<Problem[]> {
@@ -70,7 +27,7 @@ export class ProblemsService {
       const { data, error } = await this.supabase
         .from('problems')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
@@ -97,10 +54,12 @@ export class ProblemsService {
       const { data, error } = await this.supabase
         .from('problems')
         .insert({
-          title: createProblemDto.title || '새 문제',
+          title: createProblemDto.title || '새 매매법',
           description: createProblemDto.description || '',
           difficulty: createProblemDto.difficulty || 'easy',
           category: createProblemDto.category || '기타',
+          thumbnail_url: createProblemDto.thumbnail_url || null,
+          content_image_url: createProblemDto.content_image_url || null,
         })
         .select()
         .single();
@@ -111,10 +70,12 @@ export class ProblemsService {
 
     const newProblem: Problem = {
       id: String(this.memoryProblems.length + 1),
-      title: createProblemDto.title || '새 문제',
+      title: createProblemDto.title || '새 매매법',
       description: createProblemDto.description || '',
       difficulty: createProblemDto.difficulty || 'easy',
       category: createProblemDto.category || '기타',
+      thumbnail_url: createProblemDto.thumbnail_url,
+      content_image_url: createProblemDto.content_image_url,
       created_at: new Date().toISOString(),
     };
     this.memoryProblems.push(newProblem);
@@ -123,14 +84,17 @@ export class ProblemsService {
 
   async update(id: string, updateProblemDto: Partial<Problem>): Promise<Problem | null> {
     if (this.supabase) {
+      const updateData: any = {};
+      if (updateProblemDto.title !== undefined) updateData.title = updateProblemDto.title;
+      if (updateProblemDto.description !== undefined) updateData.description = updateProblemDto.description;
+      if (updateProblemDto.difficulty !== undefined) updateData.difficulty = updateProblemDto.difficulty;
+      if (updateProblemDto.category !== undefined) updateData.category = updateProblemDto.category;
+      if (updateProblemDto.thumbnail_url !== undefined) updateData.thumbnail_url = updateProblemDto.thumbnail_url;
+      if (updateProblemDto.content_image_url !== undefined) updateData.content_image_url = updateProblemDto.content_image_url;
+
       const { data, error } = await this.supabase
         .from('problems')
-        .update({
-          title: updateProblemDto.title,
-          description: updateProblemDto.description,
-          difficulty: updateProblemDto.difficulty,
-          category: updateProblemDto.category,
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
