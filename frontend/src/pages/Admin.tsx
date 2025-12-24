@@ -43,6 +43,8 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   // 폼 상태
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
@@ -160,7 +162,8 @@ function Admin() {
       });
 
       if (!res.ok) {
-        throw new Error('업로드 실패');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || '업로드 실패');
       }
 
       const { url } = await res.json();
@@ -170,9 +173,12 @@ function Admin() {
       } else {
         setFormData(prev => ({ ...prev, content_image_url: url }));
       }
-    } catch (err) {
+      
+      setSubmitMessage({ type: 'success', text: '이미지가 업로드되었습니다!' });
+      setTimeout(() => setSubmitMessage(null), 3000);
+    } catch (err: any) {
       console.error('Upload error:', err);
-      alert('이미지 업로드에 실패했습니다.');
+      setSubmitMessage({ type: 'error', text: `이미지 업로드 실패: ${err.message}` });
     } finally {
       setUploading(false);
     }
@@ -180,6 +186,19 @@ function Admin() {
 
   const handleSubmitProblem = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.title.trim()) {
+      setSubmitMessage({ type: 'error', text: '제목을 입력해주세요.' });
+      return;
+    }
+    
+    if (!formData.description.trim()) {
+      setSubmitMessage({ type: 'error', text: '내용을 입력해주세요.' });
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitMessage(null);
     
     try {
       const url = editingProblem 
@@ -192,15 +211,35 @@ function Admin() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          difficulty: formData.difficulty,
+          thumbnail_url: formData.thumbnail_url || null,
+          content_image_url: formData.content_image_url || null,
+        }),
       });
 
-      if (res.ok) {
-        await fetchData();
-        resetForm();
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || '저장에 실패했습니다.');
       }
-    } catch (err) {
+
+      setSubmitMessage({ 
+        type: 'success', 
+        text: editingProblem ? '매매법이 수정되었습니다! ✅' : '새 매매법이 추가되었습니다! ✅' 
+      });
+      
+      await fetchData();
+      resetForm();
+      
+      // 3초 후 메시지 제거
+      setTimeout(() => setSubmitMessage(null), 3000);
+    } catch (err: any) {
       console.error('저장 실패:', err);
+      setSubmitMessage({ type: 'error', text: `저장 실패: ${err.message}` });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -215,9 +254,12 @@ function Admin() {
 
       if (res.ok) {
         setProblems(problems.filter(p => p.id !== id));
+        setSubmitMessage({ type: 'success', text: '삭제되었습니다!' });
+        setTimeout(() => setSubmitMessage(null), 3000);
       }
     } catch (err) {
       console.error('삭제 실패:', err);
+      setSubmitMessage({ type: 'error', text: '삭제에 실패했습니다.' });
     }
   };
 
@@ -230,6 +272,7 @@ function Admin() {
       thumbnail_url: problem.thumbnail_url || '',
       content_image_url: problem.content_image_url || '',
     });
+    setSubmitMessage(null);
   };
 
   const resetForm = () => {
@@ -415,17 +458,28 @@ function Admin() {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 {editingProblem ? '✏️ 매매법 수정' : '➕ 새 매매법 추가'}
               </h2>
+
+              {/* 메시지 표시 */}
+              {submitMessage && (
+                <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
+                  submitMessage.type === 'success' 
+                    ? 'bg-green-100 text-green-700 border border-green-200' 
+                    : 'bg-red-100 text-red-700 border border-red-200'
+                }`}>
+                  {submitMessage.text}
+                </div>
+              )}
               
               <form onSubmit={handleSubmitProblem} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">제목</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="매매법 제목"
-                    required
+                    disabled={submitting}
                   />
                 </div>
 
@@ -435,6 +489,7 @@ function Admin() {
                     value={formData.difficulty}
                     onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                    disabled={submitting}
                   >
                     <option value="easy">초급</option>
                     <option value="medium">중급</option>
@@ -453,10 +508,11 @@ function Admin() {
                     accept="image/*"
                     onChange={(e) => handleImageSelect(e, 'thumbnail')}
                     className="hidden"
+                    disabled={submitting || uploading}
                   />
                   
                   {formData.thumbnail_url ? (
-                    <div className="relative">
+                    <div className="relative inline-block">
                       <img 
                         src={formData.thumbnail_url} 
                         alt="썸네일" 
@@ -466,6 +522,7 @@ function Admin() {
                         type="button"
                         onClick={() => setFormData({ ...formData, thumbnail_url: '' })}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        disabled={submitting}
                       >
                         ✕
                       </button>
@@ -474,11 +531,11 @@ function Admin() {
                     <button
                       type="button"
                       onClick={() => thumbnailInputRef.current?.click()}
-                      disabled={uploading}
-                      className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                      disabled={uploading || submitting}
+                      className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                     >
                       {uploading && cropperType === 'thumbnail' ? (
-                        <span className="animate-spin">⏳</span>
+                        <div className="animate-spin text-2xl">⏳</div>
                       ) : (
                         <>
                           <span className="text-2xl mb-1">📷</span>
@@ -500,6 +557,7 @@ function Admin() {
                     accept="image/*"
                     onChange={(e) => handleImageSelect(e, 'content')}
                     className="hidden"
+                    disabled={submitting || uploading}
                   />
                   
                   {formData.content_image_url ? (
@@ -513,6 +571,7 @@ function Admin() {
                         type="button"
                         onClick={() => setFormData({ ...formData, content_image_url: '' })}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        disabled={submitting}
                       >
                         ✕
                       </button>
@@ -521,11 +580,11 @@ function Admin() {
                     <button
                       type="button"
                       onClick={() => contentInputRef.current?.click()}
-                      disabled={uploading}
-                      className="w-full h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                      disabled={uploading || submitting}
+                      className="w-full h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                     >
                       {uploading && cropperType === 'content' ? (
-                        <span className="animate-spin">⏳</span>
+                        <div className="animate-spin text-2xl">⏳</div>
                       ) : (
                         <>
                           <span className="text-2xl mb-1">🖼️</span>
@@ -537,28 +596,40 @@ function Admin() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">내용 *</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 h-48 font-mono text-sm"
                     placeholder="매매법 설명을 입력하세요..."
-                    required
+                    disabled={submitting}
                   />
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all"
+                    disabled={submitting || uploading}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {editingProblem ? '수정 완료' : '추가하기'}
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        저장 중...
+                      </>
+                    ) : (
+                      editingProblem ? '수정 완료' : '추가하기'
+                    )}
                   </button>
                   {editingProblem && (
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300"
+                      disabled={submitting}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 disabled:opacity-50"
                     >
                       취소
                     </button>
