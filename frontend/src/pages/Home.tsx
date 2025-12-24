@@ -12,10 +12,6 @@ interface Problem {
   created_at: string;
 }
 
-interface UserProfile {
-  tier: 'basic' | 'premium';
-}
-
 const difficultyColors = {
   normal: 'bg-green-100 text-green-700',
   advanced: 'bg-purple-100 text-purple-700',
@@ -36,6 +32,7 @@ function Home() {
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [userTier, setUserTier] = useState<'basic' | 'premium'>('basic');
+  const [userRole, setUserRole] = useState<string>('user');
 
   // 사용자 프로필 최신 정보 가져오기
   useEffect(() => {
@@ -46,11 +43,13 @@ function Home() {
         .then((res) => res.json())
         .then((data) => {
           setUserTier(data.tier || 'basic');
+          setUserRole(data.role || 'user');
           // 로컬스토리지도 업데이트
           const savedUser = localStorage.getItem('user');
           if (savedUser) {
             const parsedUser = JSON.parse(savedUser);
             parsedUser.tier = data.tier || 'basic';
+            parsedUser.role = data.role || 'user';
             localStorage.setItem('user', JSON.stringify(parsedUser));
           }
         })
@@ -75,9 +74,16 @@ function Home() {
     ? problems 
     : problems.filter(p => p.difficulty === selectedDifficulty);
 
+  // 심화 자료 접근 가능 여부 (관리자/마스터는 항상 가능)
+  const canAccessAdvanced = userRole === 'admin' || userRole === 'master' || userTier === 'premium';
+
   const handleProblemClick = (problem: Problem) => {
-    // 심화 자료인데 승인받지 않은 유저면 접근 불가
-    if (problem.difficulty === 'advanced' && (!user || userTier !== 'premium')) {
+    // 심화 자료인데 접근 권한 없으면
+    if (problem.difficulty === 'advanced' && !user) {
+      setShowAccessDenied(true);
+      return;
+    }
+    if (problem.difficulty === 'advanced' && !canAccessAdvanced) {
       setShowAccessDenied(true);
       return;
     }
@@ -87,7 +93,10 @@ function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">로딩 중...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-500">로딩 중...</p>
+        </div>
       </div>
     );
   }
@@ -99,7 +108,7 @@ function Home() {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <h2 className="text-4xl font-bold mb-3">
+          <h2 className="text-5xl font-black mb-3">
             박본질 크립토
           </h2>
           <p className="text-blue-100 text-lg">
@@ -110,7 +119,7 @@ function Home() {
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
               {problems.length}개 매매법
             </div>
-            {user && userTier === 'premium' && (
+            {user && canAccessAdvanced && (
               <div className="flex items-center gap-2 bg-purple-500/50 px-4 py-2 rounded-full">
                 심화 열람 가능
               </div>
@@ -166,7 +175,7 @@ function Home() {
                   </span>
                 </div>
                 {/* 심화 자료 잠금 표시 */}
-                {problem.difficulty === 'advanced' && (!user || userTier !== 'premium') && (
+                {problem.difficulty === 'advanced' && !canAccessAdvanced && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <span className="text-4xl">🔒</span>
                   </div>

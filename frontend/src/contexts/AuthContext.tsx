@@ -4,8 +4,8 @@ interface User {
   id: string;
   username: string;
   name: string;
-  role: 'user' | 'admin';
-  tier: 'basic' | 'premium'; // basic = 일반, premium = 심화 열람 가능
+  role: 'user' | 'master' | 'admin';
+  tier: 'basic' | 'premium';
 }
 
 interface AuthContextType {
@@ -32,10 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedToken && savedUser) {
       setToken(savedToken);
       const parsedUser = JSON.parse(savedUser);
-      // tier가 없으면 basic으로 설정
-      if (!parsedUser.tier) {
-        parsedUser.tier = 'basic';
-      }
+      // 기본값 설정
+      if (!parsedUser.tier) parsedUser.tier = 'basic';
+      if (!parsedUser.role) parsedUser.role = 'user';
       setUser(parsedUser);
     }
     setIsLoading(false);
@@ -57,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData = {
       ...data.user,
       tier: data.user.tier || 'basic',
+      role: data.user.role || 'user',
     };
     setToken(data.access_token);
     setUser(userData);
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData = {
       ...data.user,
       tier: data.user.tier || 'basic',
+      role: data.user.role || 'user',
     };
     setToken(data.access_token);
     setUser(userData);

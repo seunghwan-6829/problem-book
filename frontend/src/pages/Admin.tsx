@@ -8,7 +8,7 @@ interface UserInfo {
   id: string;
   username: string;
   name: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'master' | 'admin';
   tier: 'basic' | 'premium';
   visit_count: number;
   last_visit: string;
@@ -64,13 +64,17 @@ function Admin() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const contentInputRef = useRef<HTMLInputElement>(null);
 
+  const isAdmin = user?.role === 'admin';
+  const isMaster = user?.role === 'master';
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    if (user.role !== 'admin') {
+    // 관리자 또는 마스터만 접근 가능
+    if (user.role !== 'admin' && user.role !== 'master') {
       navigate('/');
       return;
     }
@@ -98,11 +102,10 @@ function Admin() {
       const statsData = await statsRes.json();
       const problemsData = await problemsRes.json();
 
-      // 관리자를 상단으로 정렬
+      // 관리자 > 마스터 > 일반 순으로 정렬
       const sortedUsers = usersData.sort((a: UserInfo, b: UserInfo) => {
-        if (a.role === 'admin' && b.role !== 'admin') return -1;
-        if (a.role !== 'admin' && b.role === 'admin') return 1;
-        return 0;
+        const roleOrder = { admin: 0, master: 1, user: 2 };
+        return (roleOrder[a.role] || 2) - (roleOrder[b.role] || 2);
       });
 
       setUsers(sortedUsers);
@@ -115,7 +118,20 @@ function Admin() {
     }
   };
 
-  const updateRole = async (userId: string, newRole: 'user' | 'admin') => {
+  // 역할 변경 가능 여부 체크
+  const canChangeRole = (targetUser: UserInfo) => {
+    // 자기 자신은 변경 불가
+    if (targetUser.id === user?.id) return false;
+    // 관리자는 모든 사용자 변경 가능
+    if (isAdmin) return true;
+    // 마스터는 관리자 변경 불가
+    if (isMaster && targetUser.role === 'admin') return false;
+    // 마스터는 일반 사용자만 변경 가능
+    if (isMaster) return targetUser.role === 'user';
+    return false;
+  };
+
+  const updateRole = async (userId: string, newRole: 'user' | 'master') => {
     try {
       const res = await fetch(`${API_URL}/admin/users/${userId}/role`, {
         method: 'PATCH',
@@ -128,6 +144,8 @@ function Admin() {
 
       if (res.ok) {
         await fetchData();
+        setSubmitMessage({ type: 'success', text: '역할이 변경되었습니다!' });
+        setTimeout(() => setSubmitMessage(null), 3000);
       }
     } catch (err) {
       console.error('역할 변경 실패:', err);
@@ -337,12 +355,26 @@ function Admin() {
     });
   };
 
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">관리자</span>;
+      case 'master':
+        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">마스터</span>;
+      default:
+        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">일반</span>;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex items-center justify-center py-20">
-          <div className="text-gray-500">로딩 중...</div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-gray-500">로딩 중...</p>
+          </div>
         </div>
       </div>
     );
@@ -376,7 +408,9 @@ function Admin() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">관리자 대시보드</h1>
-          <p className="text-gray-500 mt-1">사용자 및 콘텐츠 관리</p>
+          <p className="text-gray-500 mt-1">
+            {isAdmin ? '관리자' : '마스터'} 권한으로 접속 중
+          </p>
         </div>
 
         {/* 메시지 표시 */}
@@ -467,7 +501,9 @@ function Admin() {
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
-                              u.role === 'admin' ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                              u.role === 'admin' ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 
+                              u.role === 'master' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+                              'bg-gradient-to-br from-gray-400 to-gray-500'
                             }`}>
                               {u.name.charAt(0)}
                             </div>
@@ -475,40 +511,43 @@ function Admin() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-gray-600">{u.username}</td>
+                        <td className="px-6 py-4">{getRoleBadge(u.role)}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {u.role === 'admin' ? '관리자' : '일반'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <select
-                            value={u.tier || 'basic'}
-                            onChange={(e) => updateTier(u.id, e.target.value as 'basic' | 'premium')}
-                            className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white"
-                            disabled={u.id === user?.id}
-                          >
-                            <option value="basic">일반</option>
-                            <option value="premium">심화</option>
-                          </select>
+                          {canChangeRole(u) ? (
+                            <select
+                              value={u.tier || 'basic'}
+                              onChange={(e) => updateTier(u.id, e.target.value as 'basic' | 'premium')}
+                              className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white"
+                            >
+                              <option value="basic">일반</option>
+                              <option value="premium">심화</option>
+                            </select>
+                          ) : (
+                            <span className="text-gray-500 text-sm">{u.tier === 'premium' ? '심화' : '일반'}</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-gray-600">{u.visit_count || 0}회</td>
                         <td className="px-6 py-4 text-gray-500">{formatDate(u.created_at)}</td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            {u.id !== user?.id && (
+                            {canChangeRole(u) && (
                               <>
-                                <button
-                                  onClick={() => updateRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
-                                  className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                    u.role === 'admin'
-                                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                  }`}
-                                >
-                                  {u.role === 'admin' ? '관리자 해제' : '관리자'}
-                                </button>
+                                {u.role === 'user' && (
+                                  <button
+                                    onClick={() => updateRole(u.id, 'master')}
+                                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200"
+                                  >
+                                    마스터 지정
+                                  </button>
+                                )}
+                                {u.role === 'master' && isAdmin && (
+                                  <button
+                                    onClick={() => updateRole(u.id, 'user')}
+                                    className="px-2 py-1 bg-gray-200 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-300"
+                                  >
+                                    마스터 해제
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => deleteUser(u.id, u.name)}
                                   className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200"
@@ -600,7 +639,7 @@ function Admin() {
                         className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                       >
                         {uploading && cropperType === 'thumbnail' ? (
-                          <div className="animate-spin text-xl">⏳</div>
+                          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
                         ) : (
                           <>
                             <span className="text-xl mb-1">📷</span>
@@ -646,7 +685,7 @@ function Admin() {
                         className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                       >
                         {uploading && cropperType === 'content' ? (
-                          <div className="animate-spin text-xl">⏳</div>
+                          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
                         ) : (
                           <>
                             <span className="text-xl mb-1">🖼️</span>
@@ -677,10 +716,7 @@ function Admin() {
                   >
                     {submitting ? (
                       <>
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         저장 중...
                       </>
                     ) : (

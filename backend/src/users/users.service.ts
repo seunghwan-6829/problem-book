@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { SupabaseService } from '../supabase/supabase.service';
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'master' | 'admin';
 export type UserTier = 'basic' | 'premium';
 
 export interface User {
@@ -38,7 +38,7 @@ export class UsersService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []).map(u => ({ ...u, tier: u.tier || 'basic' }));
+      return (data || []).map(u => ({ ...u, tier: u.tier || 'basic', role: u.role || 'user' }));
     }
     return this.memoryUsers.map(({ password, ...user }) => user);
   }
@@ -53,7 +53,7 @@ export class UsersService {
 
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
-        return { ...data, tier: data.tier || 'basic' };
+        return { ...data, tier: data.tier || 'basic', role: data.role || 'user' };
       }
       return undefined;
     }
@@ -70,7 +70,7 @@ export class UsersService {
 
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
-        return { ...data, tier: data.tier || 'basic' };
+        return { ...data, tier: data.tier || 'basic', role: data.role || 'user' };
       }
       return undefined;
     }
@@ -102,7 +102,7 @@ export class UsersService {
         .single();
 
       if (error) throw error;
-      return { ...data, tier: data.tier || 'basic' };
+      return { ...data, tier: data.tier || 'basic', role: data.role || 'user' };
     }
 
     const newUser: User = {
@@ -153,7 +153,7 @@ export class UsersService {
         .single();
 
       if (error) throw error;
-      return data ? { ...data, tier: data.tier || 'basic' } : null;
+      return data ? { ...data, tier: data.tier || 'basic', role: data.role || 'user' } : null;
     }
 
     const user = this.memoryUsers.find((u) => u.id === userId);
@@ -174,7 +174,7 @@ export class UsersService {
         .single();
 
       if (error) throw error;
-      return data ? { ...data, tier: data.tier || 'basic' } : null;
+      return data ? { ...data, tier: data.tier || 'basic', role: data.role || 'user' } : null;
     }
 
     const user = this.memoryUsers.find((u) => u.id === userId);
@@ -218,7 +218,7 @@ export class UsersService {
 
     return {
       totalUsers: users.length,
-      adminCount: users.filter((u) => u.role === 'admin').length,
+      adminCount: users.filter((u) => u.role === 'admin' || u.role === 'master').length,
       userCount: users.filter((u) => u.role === 'user').length,
       todayVisits: users.filter((u) => {
         return new Date(u.last_visit).toDateString() === today;
