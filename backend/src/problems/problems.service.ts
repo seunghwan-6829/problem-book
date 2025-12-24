@@ -120,4 +120,49 @@ export class ProblemsService {
     this.memoryProblems.push(newProblem);
     return newProblem;
   }
+
+  async update(id: string, updateProblemDto: Partial<Problem>): Promise<Problem | null> {
+    if (this.supabase) {
+      const { data, error } = await this.supabase
+        .from('problems')
+        .update({
+          title: updateProblemDto.title,
+          description: updateProblemDto.description,
+          difficulty: updateProblemDto.difficulty,
+          category: updateProblemDto.category,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+
+    const index = this.memoryProblems.findIndex((p) => p.id === id);
+    if (index !== -1) {
+      this.memoryProblems[index] = { ...this.memoryProblems[index], ...updateProblemDto };
+      return this.memoryProblems[index];
+    }
+    return null;
+  }
+
+  async delete(id: string): Promise<{ success: boolean }> {
+    if (this.supabase) {
+      const { error } = await this.supabase
+        .from('problems')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    }
+
+    const index = this.memoryProblems.findIndex((p) => p.id === id);
+    if (index !== -1) {
+      this.memoryProblems.splice(index, 1);
+      return { success: true };
+    }
+    return { success: false };
+  }
 }
