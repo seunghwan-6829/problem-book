@@ -6,7 +6,6 @@ export interface Problem {
   title: string;
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
   thumbnail_url?: string;
   content_image_url?: string;
   created_at: string;
@@ -57,7 +56,6 @@ export class ProblemsService {
           title: createProblemDto.title || '새 매매법',
           description: createProblemDto.description || '',
           difficulty: createProblemDto.difficulty || 'easy',
-          category: createProblemDto.category || '기타',
           thumbnail_url: createProblemDto.thumbnail_url || null,
           content_image_url: createProblemDto.content_image_url || null,
         })
@@ -73,7 +71,6 @@ export class ProblemsService {
       title: createProblemDto.title || '새 매매법',
       description: createProblemDto.description || '',
       difficulty: createProblemDto.difficulty || 'easy',
-      category: createProblemDto.category || '기타',
       thumbnail_url: createProblemDto.thumbnail_url,
       content_image_url: createProblemDto.content_image_url,
       created_at: new Date().toISOString(),
@@ -88,7 +85,6 @@ export class ProblemsService {
       if (updateProblemDto.title !== undefined) updateData.title = updateProblemDto.title;
       if (updateProblemDto.description !== undefined) updateData.description = updateProblemDto.description;
       if (updateProblemDto.difficulty !== undefined) updateData.difficulty = updateProblemDto.difficulty;
-      if (updateProblemDto.category !== undefined) updateData.category = updateProblemDto.category;
       if (updateProblemDto.thumbnail_url !== undefined) updateData.thumbnail_url = updateProblemDto.thumbnail_url;
       if (updateProblemDto.content_image_url !== undefined) updateData.content_image_url = updateProblemDto.content_image_url;
 

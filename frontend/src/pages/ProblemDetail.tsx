@@ -7,7 +7,6 @@ interface Problem {
   title: string;
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
   thumbnail_url?: string;
   content_image_url?: string;
   created_at: string;
@@ -89,9 +88,6 @@ function ProblemDetail() {
             <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${difficultyColors[problem.difficulty]}`}>
               {difficultyLabels[problem.difficulty]}
             </span>
-            <span className="px-4 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600">
-              {problem.category}
-            </span>
           </div>
         </div>
       </div>
@@ -114,7 +110,7 @@ function ProblemDetail() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
             📖 매매법 설명
           </h2>
-          <div className="text-gray-700 leading-relaxed whitespace-pre-line font-mono text-sm bg-gray-50 p-6 rounded-xl">
+          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
             {problem.description}
           </div>
         </div>

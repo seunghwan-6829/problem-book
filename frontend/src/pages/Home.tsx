@@ -7,7 +7,6 @@ interface Problem {
   title: string;
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
   thumbnail_url?: string;
   created_at: string;
 }
@@ -24,19 +23,10 @@ const difficultyLabels = {
   hard: '고급',
 };
 
-const categoryIcons: Record<string, string> = {
-  '캔들 패턴': '🕯️',
-  '차트 패턴': '📊',
-  '기술적 지표': '📈',
-  '매매 전략': '🎯',
-  '리스크 관리': '🛡️',
-  '심리 분석': '🧠',
-};
-
 function Home() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('전체');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('전체');
 
   useEffect(() => {
     fetch('https://backend-six-lyart-32.vercel.app/problems')
@@ -51,10 +41,9 @@ function Home() {
       });
   }, []);
 
-  const categories = ['전체', ...new Set(problems.map(p => p.category))];
-  const filteredProblems = selectedCategory === '전체' 
+  const filteredProblems = selectedDifficulty === '전체' 
     ? problems 
-    : problems.filter(p => p.category === selectedCategory);
+    : problems.filter(p => p.difficulty === selectedDifficulty);
 
   if (loading) {
     return (
@@ -88,19 +77,21 @@ function Home() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Category Filter */}
+        {/* Difficulty Filter */}
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {categories.map((category) => (
+          {['전체', 'easy', 'medium', 'hard'].map((difficulty) => (
             <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
+              key={difficulty}
+              onClick={() => setSelectedDifficulty(difficulty)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                selectedCategory === category
+                selectedDifficulty === difficulty
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              {categoryIcons[category] || '📌'} {category}
+              {difficulty === '전체' ? '📌 전체' : 
+               difficulty === 'easy' ? '🟢 초급' :
+               difficulty === 'medium' ? '🟡 중급' : '🔴 고급'}
             </button>
           ))}
         </div>
@@ -113,8 +104,8 @@ function Home() {
               to={`/problems/${problem.id}`}
               className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all duration-300"
             >
-              {/* Thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-blue-100 to-blue-50 relative overflow-hidden">
+              {/* Thumbnail - 1:1 비율 */}
+              <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-50 relative overflow-hidden">
                 {problem.thumbnail_url ? (
                   <img 
                     src={problem.thumbnail_url} 
@@ -123,9 +114,7 @@ function Home() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-6xl opacity-50">
-                      {categoryIcons[problem.category] || '📊'}
-                    </span>
+                    <span className="text-8xl opacity-30">📊</span>
                   </div>
                 )}
                 <div className="absolute top-3 left-3">
@@ -137,12 +126,6 @@ function Home() {
 
               {/* Content */}
               <div className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{categoryIcons[problem.category] || '📌'}</span>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {problem.category}
-                  </span>
-                </div>
                 <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
                   {problem.title}
                 </h3>

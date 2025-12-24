@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import ImageCropper from '../components/ImageCropper';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UserInfo {
@@ -18,7 +19,6 @@ interface Problem {
   title: string;
   description: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
   thumbnail_url?: string;
   content_image_url?: string;
   created_at: string;
@@ -33,8 +33,6 @@ interface Stats {
 
 const API_URL = 'https://backend-six-lyart-32.vercel.app';
 
-const categories = ['캔들 패턴', '차트 패턴', '기술적 지표', '매매 전략', '리스크 관리', '심리 분석'];
-
 function Admin() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
@@ -44,18 +42,24 @@ function Admin() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
   
   // 폼 상태
-  const [isEditing, setIsEditing] = useState(false);
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     difficulty: 'easy' as 'easy' | 'medium' | 'hard',
-    category: '캔들 패턴',
     thumbnail_url: '',
     content_image_url: '',
   });
+
+  // 이미지 크롭 상태
+  const [cropperImage, setCropperImage] = useState<string | null>(null);
+  const [cropperType, setCropperType] = useState<'thumbnail' | 'content'>('thumbnail');
+  
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const contentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -122,6 +126,58 @@ function Admin() {
     }
   };
 
+  // 이미지 선택 핸들러
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'content') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperImage(reader.result as string);
+      setCropperType(type);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input
+    e.target.value = '';
+  };
+
+  // 크롭 완료 후 업로드
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropperImage(null);
+    setUploading(true);
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', croppedBlob, `${cropperType}-${Date.now()}.jpg`);
+
+      const res = await fetch(`${API_URL}/upload/image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataUpload,
+      });
+
+      if (!res.ok) {
+        throw new Error('업로드 실패');
+      }
+
+      const { url } = await res.json();
+
+      if (cropperType === 'thumbnail') {
+        setFormData(prev => ({ ...prev, thumbnail_url: url }));
+      } else {
+        setFormData(prev => ({ ...prev, content_image_url: url }));
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('이미지 업로드에 실패했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmitProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -171,21 +227,17 @@ function Admin() {
       title: problem.title,
       description: problem.description,
       difficulty: problem.difficulty,
-      category: problem.category,
       thumbnail_url: problem.thumbnail_url || '',
       content_image_url: problem.content_image_url || '',
     });
-    setIsEditing(true);
   };
 
   const resetForm = () => {
-    setIsEditing(false);
     setEditingProblem(null);
     setFormData({
       title: '',
       description: '',
       difficulty: 'easy',
-      category: '캔들 패턴',
       thumbnail_url: '',
       content_image_url: '',
     });
@@ -224,6 +276,16 @@ function Admin() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+
+      {/* Image Cropper Modal */}
+      {cropperImage && (
+        <ImageCropper
+          imageSrc={cropperImage}
+          aspectRatio={cropperType === 'thumbnail' ? 1 : null}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropperImage(null)}
+        />
+      )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
@@ -367,63 +429,110 @@ function Admin() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">난이도</label>
-                    <select
-                      value={formData.difficulty}
-                      onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
-                    >
-                      <option value="easy">초급</option>
-                      <option value="medium">중급</option>
-                      <option value="hard">고급</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
-                    >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">난이도</label>
+                  <select
+                    value={formData.difficulty}
+                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                  >
+                    <option value="easy">초급</option>
+                    <option value="medium">중급</option>
+                    <option value="hard">고급</option>
+                  </select>
                 </div>
 
-                {/* 이미지 URL 입력 */}
+                {/* 썸네일 이미지 업로드 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🖼️ 썸네일 이미지 URL (목록에서 보임)
+                    🖼️ 썸네일 이미지 (1:1 비율)
                   </label>
                   <input
-                    type="url"
-                    value={formData.thumbnail_url}
-                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/thumbnail.jpg"
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageSelect(e, 'thumbnail')}
+                    className="hidden"
                   />
-                  {formData.thumbnail_url && (
-                    <img src={formData.thumbnail_url} alt="썸네일 미리보기" className="mt-2 h-20 rounded-lg object-cover" />
+                  
+                  {formData.thumbnail_url ? (
+                    <div className="relative">
+                      <img 
+                        src={formData.thumbnail_url} 
+                        alt="썸네일" 
+                        className="w-32 h-32 rounded-xl object-cover border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, thumbnail_url: '' })}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                    >
+                      {uploading && cropperType === 'thumbnail' ? (
+                        <span className="animate-spin">⏳</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl mb-1">📷</span>
+                          <span className="text-xs">이미지 추가</span>
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
 
+                {/* 본문 이미지 업로드 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📸 본문 이미지 URL (상세페이지에서 보임)
+                    📸 본문 이미지 (자유 비율)
                   </label>
                   <input
-                    type="url"
-                    value={formData.content_image_url}
-                    onChange={(e) => setFormData({ ...formData, content_image_url: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/content-image.jpg"
+                    ref={contentInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageSelect(e, 'content')}
+                    className="hidden"
                   />
-                  {formData.content_image_url && (
-                    <img src={formData.content_image_url} alt="본문 이미지 미리보기" className="mt-2 h-32 rounded-lg object-cover" />
+                  
+                  {formData.content_image_url ? (
+                    <div className="relative inline-block">
+                      <img 
+                        src={formData.content_image_url} 
+                        alt="본문 이미지" 
+                        className="max-h-48 rounded-xl object-cover border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, content_image_url: '' })}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => contentInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                    >
+                      {uploading && cropperType === 'content' ? (
+                        <span className="animate-spin">⏳</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl mb-1">🖼️</span>
+                          <span className="text-xs">본문 이미지 추가</span>
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
 
@@ -493,7 +602,6 @@ function Admin() {
                               }`}>
                                 {problem.difficulty === 'easy' ? '초급' : problem.difficulty === 'medium' ? '중급' : '고급'}
                               </span>
-                              <span className="text-gray-400 text-xs">{problem.category}</span>
                             </div>
                           </div>
                           
