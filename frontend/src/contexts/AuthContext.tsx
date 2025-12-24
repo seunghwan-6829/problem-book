@@ -5,6 +5,7 @@ interface User {
   username: string;
   name: string;
   role: 'user' | 'admin';
+  tier: 'basic' | 'premium'; // basic = 일반, premium = 심화 열람 가능
 }
 
 interface AuthContextType {
@@ -30,7 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem('user');
     if (savedToken && savedUser) {
       setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      // tier가 없으면 basic으로 설정
+      if (!parsedUser.tier) {
+        parsedUser.tier = 'basic';
+      }
+      setUser(parsedUser);
     }
     setIsLoading(false);
   }, []);
@@ -48,10 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+    const userData = {
+      ...data.user,
+      tier: data.user.tier || 'basic',
+    };
     setToken(data.access_token);
-    setUser(data.user);
+    setUser(userData);
     localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const register = async (username: string, password: string, name: string) => {
@@ -67,10 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+    const userData = {
+      ...data.user,
+      tier: data.user.tier || 'basic',
+    };
     setToken(data.access_token);
-    setUser(data.user);
+    setUser(userData);
     localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const logout = () => {
@@ -94,4 +108,3 @@ export function useAuth() {
   }
   return context;
 }
-

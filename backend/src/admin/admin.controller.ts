@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -10,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UsersService, UserRole } from '../users/users.service';
+import { UsersService, UserRole, UserTier } from '../users/users.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -48,5 +49,26 @@ export class AdminController {
     await this.checkAdmin(req.user.userId);
     return this.usersService.updateUserRole(id, body.role);
   }
-}
 
+  @Patch('users/:id/tier')
+  async updateUserTier(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body: { tier: UserTier },
+  ) {
+    await this.checkAdmin(req.user.userId);
+    return this.usersService.updateUserTier(id, body.tier);
+  }
+
+  @Delete('users/:id')
+  async deleteUser(@Request() req, @Param('id') id: string) {
+    await this.checkAdmin(req.user.userId);
+    
+    // 자기 자신은 삭제 불가
+    if (req.user.userId === id) {
+      throw new ForbiddenException('자신을 삭제할 수 없습니다.');
+    }
+    
+    return this.usersService.deleteUser(id);
+  }
+}

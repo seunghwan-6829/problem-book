@@ -17,7 +17,7 @@ export class AuthService {
     // 방문 횟수 증가
     await this.usersService.incrementVisitCount(user.id);
     
-    const payload = { username: user.username, sub: user.id, role: user.role };
+    const payload = { username: user.username, sub: user.id, role: user.role, tier: user.tier };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -25,6 +25,7 @@ export class AuthService {
         username: user.username,
         name: user.name,
         role: user.role,
+        tier: user.tier || 'basic',
       },
     };
   }
@@ -48,6 +49,7 @@ export class AuthService {
       username: user.username,
       name: user.name,
       role: user.role,
+      tier: user.tier || 'basic',
       visit_count: user.visit_count,
       created_at: user.created_at,
     };

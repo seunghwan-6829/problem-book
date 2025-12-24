@@ -5,7 +5,7 @@ export interface Problem {
   id: string;
   title: string;
   description: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: 'normal' | 'advanced';
   category?: string;
   thumbnail_url?: string;
   content_image_url?: string;
@@ -34,7 +34,12 @@ export class ProblemsService {
           console.error('findAll error:', error);
           throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return data || [];
+        // difficulty 변환: easy -> normal, medium/hard -> advanced, 없으면 normal
+        return (data || []).map(p => ({
+          ...p,
+          difficulty: p.difficulty === 'advanced' ? 'advanced' : 
+                      (p.difficulty === 'hard' || p.difficulty === 'medium') ? 'advanced' : 'normal'
+        }));
       }
       return this.memoryProblems;
     } catch (err: any) {
@@ -56,7 +61,14 @@ export class ProblemsService {
           console.error('findOne error:', error);
           throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return data || undefined;
+        if (data) {
+          return {
+            ...data,
+            difficulty: data.difficulty === 'advanced' ? 'advanced' : 
+                        (data.difficulty === 'hard' || data.difficulty === 'medium') ? 'advanced' : 'normal'
+          };
+        }
+        return undefined;
       }
       return this.memoryProblems.find((p) => p.id === id);
     } catch (err: any) {
@@ -68,15 +80,13 @@ export class ProblemsService {
   async create(createProblemDto: Partial<Problem>): Promise<Problem> {
     try {
       if (this.supabase) {
-        // 기본 데이터
         const insertData: any = {
           title: createProblemDto.title || '새 매매법',
           description: createProblemDto.description || '',
-          difficulty: createProblemDto.difficulty || 'easy',
-          category: createProblemDto.category || '기타', // 카테고리 기본값
+          difficulty: createProblemDto.difficulty || 'normal',
+          category: createProblemDto.category || '기타',
         };
 
-        // 이미지 URL이 있으면 추가 (컬럼이 없으면 무시됨)
         if (createProblemDto.thumbnail_url) {
           insertData.thumbnail_url = createProblemDto.thumbnail_url;
         }
@@ -101,7 +111,7 @@ export class ProblemsService {
         id: String(this.memoryProblems.length + 1),
         title: createProblemDto.title || '새 매매법',
         description: createProblemDto.description || '',
-        difficulty: createProblemDto.difficulty || 'easy',
+        difficulty: createProblemDto.difficulty || 'normal',
         category: createProblemDto.category || '기타',
         thumbnail_url: createProblemDto.thumbnail_url,
         content_image_url: createProblemDto.content_image_url,

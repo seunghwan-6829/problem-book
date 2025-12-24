@@ -9,6 +9,7 @@ interface UserInfo {
   username: string;
   name: string;
   role: 'user' | 'admin';
+  tier: 'basic' | 'premium';
   visit_count: number;
   last_visit: string;
   created_at: string;
@@ -18,7 +19,7 @@ interface Problem {
   id: string;
   title: string;
   description: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: 'normal' | 'advanced';
   thumbnail_url?: string;
   content_image_url?: string;
   created_at: string;
@@ -51,7 +52,7 @@ function Admin() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    difficulty: 'easy' as 'easy' | 'medium' | 'hard',
+    difficulty: 'normal' as 'normal' | 'advanced',
     thumbnail_url: '',
     content_image_url: '',
   });
@@ -97,7 +98,14 @@ function Admin() {
       const statsData = await statsRes.json();
       const problemsData = await problemsRes.json();
 
-      setUsers(usersData);
+      // 관리자를 상단으로 정렬
+      const sortedUsers = usersData.sort((a: UserInfo, b: UserInfo) => {
+        if (a.role === 'admin' && b.role !== 'admin') return -1;
+        if (a.role !== 'admin' && b.role === 'admin') return 1;
+        return 0;
+      });
+
+      setUsers(sortedUsers);
       setStats(statsData);
       setProblems(problemsData);
     } catch (err: any) {
@@ -119,12 +127,53 @@ function Admin() {
       });
 
       if (res.ok) {
-        setUsers(users.map(u => 
-          u.id === userId ? { ...u, role: newRole } : u
-        ));
+        await fetchData();
       }
     } catch (err) {
       console.error('역할 변경 실패:', err);
+    }
+  };
+
+  const updateTier = async (userId: string, newTier: 'basic' | 'premium') => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/tier`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ tier: newTier }),
+      });
+
+      if (res.ok) {
+        setUsers(users.map(u => 
+          u.id === userId ? { ...u, tier: newTier } : u
+        ));
+        setSubmitMessage({ type: 'success', text: '등급이 변경되었습니다!' });
+        setTimeout(() => setSubmitMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('등급 변경 실패:', err);
+    }
+  };
+
+  const deleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`정말 "${userName}" 사용자를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setUsers(users.filter(u => u.id !== userId));
+        setSubmitMessage({ type: 'success', text: '사용자가 삭제되었습니다.' });
+        setTimeout(() => setSubmitMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('삭제 실패:', err);
+      setSubmitMessage({ type: 'error', text: '삭제에 실패했습니다.' });
     }
   };
 
@@ -139,8 +188,6 @@ function Admin() {
       setCropperType(type);
     };
     reader.readAsDataURL(file);
-    
-    // Reset input
     e.target.value = '';
   };
 
@@ -155,9 +202,7 @@ function Admin() {
 
       const res = await fetch(`${API_URL}/upload/image`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formDataUpload,
       });
 
@@ -227,13 +272,11 @@ function Admin() {
 
       setSubmitMessage({ 
         type: 'success', 
-        text: editingProblem ? '매매법이 수정되었습니다! ✅' : '새 매매법이 추가되었습니다! ✅' 
+        text: editingProblem ? '매매법이 수정되었습니다!' : '새 매매법이 추가되었습니다!' 
       });
       
       await fetchData();
       resetForm();
-      
-      // 3초 후 메시지 제거
       setTimeout(() => setSubmitMessage(null), 3000);
     } catch (err: any) {
       console.error('저장 실패:', err);
@@ -268,7 +311,7 @@ function Admin() {
     setFormData({
       title: problem.title,
       description: problem.description,
-      difficulty: problem.difficulty,
+      difficulty: problem.difficulty || 'normal',
       thumbnail_url: problem.thumbnail_url || '',
       content_image_url: problem.content_image_url || '',
     });
@@ -280,7 +323,7 @@ function Admin() {
     setFormData({
       title: '',
       description: '',
-      difficulty: 'easy',
+      difficulty: 'normal',
       thumbnail_url: '',
       content_image_url: '',
     });
@@ -332,9 +375,20 @@ function Admin() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">🛡️ 관리자 대시보드</h1>
+          <h1 className="text-3xl font-bold text-gray-900">관리자 대시보드</h1>
           <p className="text-gray-500 mt-1">사용자 및 콘텐츠 관리</p>
         </div>
+
+        {/* 메시지 표시 */}
+        {submitMessage && (
+          <div className={`mb-6 px-4 py-3 rounded-xl text-sm font-medium ${
+            submitMessage.type === 'success' 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-red-100 text-red-700 border border-red-200'
+          }`}>
+            {submitMessage.text}
+          </div>
+        )}
 
         {/* 통계 카드 */}
         {stats && (
@@ -368,7 +422,7 @@ function Admin() {
                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            📝 콘텐츠 관리
+            콘텐츠 관리
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -378,7 +432,7 @@ function Admin() {
                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            👥 사용자 관리
+            사용자 관리
           </button>
         </div>
 
@@ -400,6 +454,7 @@ function Admin() {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사용자</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">아이디</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">역할</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">등급</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">방문</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">가입일</th>
@@ -411,7 +466,9 @@ function Admin() {
                       <tr key={u.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
+                              u.role === 'admin' ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                            }`}>
                               {u.name.charAt(0)}
                             </div>
                             <div className="ml-3 text-gray-900">{u.name}</div>
@@ -420,26 +477,47 @@ function Admin() {
                         <td className="px-6 py-4 text-gray-600">{u.username}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            u.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                            u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
                           }`}>
                             {u.role === 'admin' ? '관리자' : '일반'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-600">{u.visit_count}회</td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={u.tier || 'basic'}
+                            onChange={(e) => updateTier(u.id, e.target.value as 'basic' | 'premium')}
+                            className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white"
+                            disabled={u.id === user?.id}
+                          >
+                            <option value="basic">일반</option>
+                            <option value="premium">심화</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{u.visit_count || 0}회</td>
                         <td className="px-6 py-4 text-gray-500">{formatDate(u.created_at)}</td>
                         <td className="px-6 py-4">
-                          {u.id !== user?.id && (
-                            <button
-                              onClick={() => updateRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
-                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                u.role === 'admin'
-                                  ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                  : 'bg-blue-600 text-white hover:bg-blue-700'
-                              }`}
-                            >
-                              {u.role === 'admin' ? '관리자 해제' : '관리자 지정'}
-                            </button>
-                          )}
+                          <div className="flex gap-2">
+                            {u.id !== user?.id && (
+                              <>
+                                <button
+                                  onClick={() => updateRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                                  className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                    u.role === 'admin'
+                                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                  }`}
+                                >
+                                  {u.role === 'admin' ? '관리자 해제' : '관리자'}
+                                </button>
+                                <button
+                                  onClick={() => deleteUser(u.id, u.name)}
+                                  className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200"
+                                >
+                                  삭제
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -456,19 +534,8 @@ function Admin() {
             {/* 작성/수정 폼 */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {editingProblem ? '✏️ 매매법 수정' : '➕ 새 매매법 추가'}
+                {editingProblem ? '매매법 수정' : '새 매매법 추가'}
               </h2>
-
-              {/* 메시지 표시 */}
-              {submitMessage && (
-                <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
-                  submitMessage.type === 'success' 
-                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                    : 'bg-red-100 text-red-700 border border-red-200'
-                }`}>
-                  {submitMessage.text}
-                </div>
-              )}
               
               <form onSubmit={handleSubmitProblem} className="space-y-4">
                 <div>
@@ -484,115 +551,111 @@ function Admin() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">난이도</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">열람 등급</label>
                   <select
                     value={formData.difficulty}
                     onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
                     disabled={submitting}
                   >
-                    <option value="easy">초급</option>
-                    <option value="medium">중급</option>
-                    <option value="hard">고급</option>
+                    <option value="normal">일반 (모든 회원)</option>
+                    <option value="advanced">심화 (승인 회원만)</option>
                   </select>
                 </div>
 
-                {/* 썸네일 이미지 업로드 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🖼️ 썸네일 이미지 (1:1 비율)
-                  </label>
-                  <input
-                    ref={thumbnailInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageSelect(e, 'thumbnail')}
-                    className="hidden"
-                    disabled={submitting || uploading}
-                  />
-                  
-                  {formData.thumbnail_url ? (
-                    <div className="relative inline-block">
-                      <img 
-                        src={formData.thumbnail_url} 
-                        alt="썸네일" 
-                        className="w-32 h-32 rounded-xl object-cover border border-gray-200"
-                      />
+                {/* 이미지 업로드 - 한 줄로 */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 썸네일 이미지 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">썸네일 (1:1)</label>
+                    <input
+                      ref={thumbnailInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageSelect(e, 'thumbnail')}
+                      className="hidden"
+                      disabled={submitting || uploading}
+                    />
+                    
+                    {formData.thumbnail_url ? (
+                      <div className="relative">
+                        <img 
+                          src={formData.thumbnail_url} 
+                          alt="썸네일" 
+                          className="w-full aspect-square rounded-xl object-cover border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, thumbnail_url: '' })}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => setFormData({ ...formData, thumbnail_url: '' })}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
-                        disabled={submitting}
+                        onClick={() => thumbnailInputRef.current?.click()}
+                        disabled={uploading || submitting}
+                        className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                       >
-                        ✕
+                        {uploading && cropperType === 'thumbnail' ? (
+                          <div className="animate-spin text-xl">⏳</div>
+                        ) : (
+                          <>
+                            <span className="text-xl mb-1">📷</span>
+                            <span className="text-xs">썸네일</span>
+                          </>
+                        )}
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => thumbnailInputRef.current?.click()}
-                      disabled={uploading || submitting}
-                      className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
-                    >
-                      {uploading && cropperType === 'thumbnail' ? (
-                        <div className="animate-spin text-2xl">⏳</div>
-                      ) : (
-                        <>
-                          <span className="text-2xl mb-1">📷</span>
-                          <span className="text-xs">이미지 추가</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                {/* 본문 이미지 업로드 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📸 본문 이미지 (자유 비율)
-                  </label>
-                  <input
-                    ref={contentInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageSelect(e, 'content')}
-                    className="hidden"
-                    disabled={submitting || uploading}
-                  />
-                  
-                  {formData.content_image_url ? (
-                    <div className="relative inline-block">
-                      <img 
-                        src={formData.content_image_url} 
-                        alt="본문 이미지" 
-                        className="max-h-48 rounded-xl object-cover border border-gray-200"
-                      />
+                  {/* 본문 이미지 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">본문 이미지</label>
+                    <input
+                      ref={contentInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageSelect(e, 'content')}
+                      className="hidden"
+                      disabled={submitting || uploading}
+                    />
+                    
+                    {formData.content_image_url ? (
+                      <div className="relative">
+                        <img 
+                          src={formData.content_image_url} 
+                          alt="본문 이미지" 
+                          className="w-full aspect-square rounded-xl object-cover border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, content_image_url: '' })}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => setFormData({ ...formData, content_image_url: '' })}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
-                        disabled={submitting}
+                        onClick={() => contentInputRef.current?.click()}
+                        disabled={uploading || submitting}
+                        className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                       >
-                        ✕
+                        {uploading && cropperType === 'content' ? (
+                          <div className="animate-spin text-xl">⏳</div>
+                        ) : (
+                          <>
+                            <span className="text-xl mb-1">🖼️</span>
+                            <span className="text-xs">본문</span>
+                          </>
+                        )}
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => contentInputRef.current?.click()}
-                      disabled={uploading || submitting}
-                      className="w-full h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
-                    >
-                      {uploading && cropperType === 'content' ? (
-                        <div className="animate-spin text-2xl">⏳</div>
-                      ) : (
-                        <>
-                          <span className="text-2xl mb-1">🖼️</span>
-                          <span className="text-xs">본문 이미지 추가</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -600,7 +663,7 @@ function Admin() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 h-48 font-mono text-sm"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 h-40 text-sm"
                     placeholder="매매법 설명을 입력하세요..."
                     disabled={submitting}
                   />
@@ -640,11 +703,11 @@ function Admin() {
 
             {/* 매매법 목록 */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">📚 매매법 목록 ({problems.length})</h2>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">매매법 목록 ({problems.length})</h2>
               </div>
               
-              <div className="max-h-[700px] overflow-y-auto">
+              <div className="max-h-[600px] overflow-y-auto">
                 {problems.length === 0 ? (
                   <div className="px-6 py-12 text-center text-gray-500">
                     등록된 매매법이 없습니다.
@@ -654,26 +717,21 @@ function Admin() {
                     {problems.map((problem) => (
                       <div key={problem.id} className="px-6 py-4 hover:bg-gray-50">
                         <div className="flex items-start gap-4">
-                          {/* 썸네일 미리보기 */}
-                          <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                          <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
                             {problem.thumbnail_url ? (
                               <img src={problem.thumbnail_url} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-2xl">📊</div>
+                              <div className="w-full h-full flex items-center justify-center text-xl">📊</div>
                             )}
                           </div>
                           
                           <div className="flex-1 min-w-0">
                             <h3 className="text-gray-900 font-medium truncate">{problem.title}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`px-2 py-0.5 rounded text-xs ${
-                                problem.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
-                              }`}>
-                                {problem.difficulty === 'easy' ? '초급' : problem.difficulty === 'medium' ? '중급' : '고급'}
-                              </span>
-                            </div>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
+                              problem.difficulty === 'advanced' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'
+                            }`}>
+                              {problem.difficulty === 'advanced' ? '심화' : '일반'}
+                            </span>
                           </div>
                           
                           <div className="flex gap-2 flex-shrink-0">
