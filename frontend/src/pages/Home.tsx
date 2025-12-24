@@ -12,6 +12,10 @@ interface Problem {
   created_at: string;
 }
 
+interface UserProfile {
+  tier: 'basic' | 'premium';
+}
+
 const difficultyColors = {
   normal: 'bg-green-100 text-green-700',
   advanced: 'bg-purple-100 text-purple-700',
@@ -22,16 +26,40 @@ const difficultyLabels = {
   advanced: '심화',
 };
 
+const API_URL = 'https://backend-six-lyart-32.vercel.app';
+
 function Home() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('전체');
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [userTier, setUserTier] = useState<'basic' | 'premium'>('basic');
+
+  // 사용자 프로필 최신 정보 가져오기
+  useEffect(() => {
+    if (user && token) {
+      fetch(`${API_URL}/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setUserTier(data.tier || 'basic');
+          // 로컬스토리지도 업데이트
+          const savedUser = localStorage.getItem('user');
+          if (savedUser) {
+            const parsedUser = JSON.parse(savedUser);
+            parsedUser.tier = data.tier || 'basic';
+            localStorage.setItem('user', JSON.stringify(parsedUser));
+          }
+        })
+        .catch((err) => console.error('Profile fetch error:', err));
+    }
+  }, [user, token]);
 
   useEffect(() => {
-    fetch('https://backend-six-lyart-32.vercel.app/problems')
+    fetch(`${API_URL}/problems`)
       .then((res) => res.json())
       .then((data) => {
         setProblems(data);
@@ -49,7 +77,7 @@ function Home() {
 
   const handleProblemClick = (problem: Problem) => {
     // 심화 자료인데 승인받지 않은 유저면 접근 불가
-    if (problem.difficulty === 'advanced' && (!user || user.tier !== 'premium')) {
+    if (problem.difficulty === 'advanced' && (!user || userTier !== 'premium')) {
       setShowAccessDenied(true);
       return;
     }
@@ -82,6 +110,11 @@ function Home() {
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
               {problems.length}개 매매법
             </div>
+            {user && userTier === 'premium' && (
+              <div className="flex items-center gap-2 bg-purple-500/50 px-4 py-2 rounded-full">
+                심화 열람 가능
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -133,7 +166,7 @@ function Home() {
                   </span>
                 </div>
                 {/* 심화 자료 잠금 표시 */}
-                {problem.difficulty === 'advanced' && (!user || user.tier !== 'premium') && (
+                {problem.difficulty === 'advanced' && (!user || userTier !== 'premium') && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <span className="text-4xl">🔒</span>
                   </div>
