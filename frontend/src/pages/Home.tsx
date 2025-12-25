@@ -112,7 +112,7 @@ function Home() {
             박본질 크립토
           </h2>
           <p className="text-blue-100 text-lg">
-            차트 패턴과 기술적 분석으로 성공적인 트레이딩을 시작하세요
+            400명의 검증으로 시작된 증명 프로젝트
           </p>
           <div className="mt-6 flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
