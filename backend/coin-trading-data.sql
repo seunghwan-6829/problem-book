@@ -619,3 +619,4 @@ Dollar Cost Averaging - 일정 금액을 정기적으로 매수합니다.
 📈 확인 방법:
 alternative.me/crypto/fear-and-greed-index/', 'easy', '심리 분석');
 
+

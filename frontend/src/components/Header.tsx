@@ -44,6 +44,12 @@ function Header() {
             >
               모의시험
             </button>
+            <Link
+              to="/coming"
+              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+            >
+              준비중
+            </Link>
           </nav>
         </div>
 

@@ -32,3 +32,4 @@ CREATE INDEX IF NOT EXISTS idx_problems_difficulty ON problems(difficulty);
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE problems DISABLE ROW LEVEL SECURITY;
 
+
