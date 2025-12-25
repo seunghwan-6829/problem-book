@@ -31,7 +31,7 @@ interface MockExamSection {
   description: string;
   category: string;
   frequency: 'high' | 'medium' | 'low';
-  thumbnail_url?: string;
+  content_image_url?: string;
   created_at: string;
 }
 
@@ -75,11 +75,15 @@ function Admin() {
     description: '',
     category: '기술적분석',
     frequency: 'medium' as 'high' | 'medium' | 'low',
+    content_image_url: '',
   });
+
+  // 모의시험 이미지 ref
+  const mockExamContentInputRef = useRef<HTMLInputElement>(null);
 
   // 이미지 크롭 상태
   const [cropperImage, setCropperImage] = useState<string | null>(null);
-  const [cropperType, setCropperType] = useState<'thumbnail' | 'content'>('thumbnail');
+  const [cropperType, setCropperType] = useState<'thumbnail' | 'content' | 'mockexam-content'>('thumbnail');
   
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const contentInputRef = useRef<HTMLInputElement>(null);
@@ -216,7 +220,7 @@ function Admin() {
   };
 
   // 이미지 선택 핸들러
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'content') => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'content' | 'mockexam-content') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -253,8 +257,10 @@ function Admin() {
 
       if (cropperType === 'thumbnail') {
         setFormData(prev => ({ ...prev, thumbnail_url: url }));
-      } else {
+      } else if (cropperType === 'content') {
         setFormData(prev => ({ ...prev, content_image_url: url }));
+      } else if (cropperType === 'mockexam-content') {
+        setMockExamFormData(prev => ({ ...prev, content_image_url: url }));
       }
       
       setSubmitMessage({ type: 'success', text: '이미지가 업로드되었습니다!' });
@@ -374,6 +380,7 @@ function Admin() {
       description: '',
       category: '기술적분석',
       frequency: 'medium',
+      content_image_url: '',
     });
   };
 
@@ -394,6 +401,7 @@ function Admin() {
       description: mockExamFormData.description,
       category: mockExamFormData.category,
       frequency: mockExamFormData.frequency,
+      content_image_url: mockExamFormData.content_image_url || undefined,
       created_at: new Date().toISOString(),
     };
 
@@ -417,6 +425,7 @@ function Admin() {
       description: section.description,
       category: section.category,
       frequency: section.frequency,
+      content_image_url: section.content_image_url || '',
     });
   };
 
@@ -946,6 +955,52 @@ function Admin() {
                     placeholder="섹션 설명을 입력하세요..."
                     disabled={submitting}
                   />
+                </div>
+
+                {/* 본문 이미지 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">본문 이미지</label>
+                  <input
+                    ref={mockExamContentInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageSelect(e, 'mockexam-content')}
+                    className="hidden"
+                    disabled={submitting || uploading}
+                  />
+                  
+                  {mockExamFormData.content_image_url ? (
+                    <div className="relative">
+                      <img 
+                        src={mockExamFormData.content_image_url} 
+                        alt="본문 이미지" 
+                        className="w-full max-h-48 rounded-xl object-cover border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMockExamFormData({ ...mockExamFormData, content_image_url: '' })}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => mockExamContentInputRef.current?.click()}
+                      disabled={uploading || submitting}
+                      className="w-full h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors disabled:opacity-50"
+                    >
+                      {uploading && cropperType === 'mockexam-content' ? (
+                        <div className="w-6 h-6 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"></div>
+                      ) : (
+                        <>
+                          <span className="text-xl mb-1">🖼️</span>
+                          <span className="text-xs">이미지 추가 (클릭 시에만 표시됨)</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex gap-2">

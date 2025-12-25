@@ -38,9 +38,6 @@ function Header() {
           
           {/* 네비게이션 메뉴 */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-              홈
-            </Link>
             <button
               onClick={handleMockExamClick}
               className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
@@ -108,10 +105,10 @@ function Header() {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-5xl mb-4">🔒</div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">심화 인원에게만 제공됩니다</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">별도 승인이 필요합니다</h3>
           <p className="text-gray-500 mb-6">
-            모의시험은 심화 등급 이상의 회원만<br/>
-            이용할 수 있습니다.
+            심화 자료는 승인된 회원만 열람할 수 있습니다.<br/>
+            관리자에게 승인을 요청해주세요.
           </p>
           <button
             onClick={() => setShowAccessDenied(false)}

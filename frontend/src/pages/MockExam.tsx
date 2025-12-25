@@ -9,8 +9,13 @@ interface MockExamSection {
   description: string;
   category: string;
   frequency: 'high' | 'medium' | 'low';
-  thumbnail_url?: string;
+  content_image_url?: string;
   created_at: string;
+}
+
+interface UserProgress {
+  favorites: string[];
+  completed: string[];
 }
 
 const frequencyColors = {
@@ -50,9 +55,56 @@ function MockExam() {
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState<MockExamSection | null>(null);
   const [sortBy, setSortBy] = useState<'default' | 'name' | 'frequency'>('default');
+  
+  // 사용자 진행 상태 (즐겨찾기, 학습완료)
+  const [userProgress, setUserProgress] = useState<UserProgress>({
+    favorites: [],
+    completed: [],
+  });
 
   // 권한 체크
   const canAccess = user?.role === 'admin' || user?.role === 'master' || user?.tier === 'premium';
+
+  // localStorage 키 (사용자별로 구분)
+  const getStorageKey = () => `mockexam_progress_${user?.id || 'guest'}`;
+
+  // 진행 상태 로드
+  useEffect(() => {
+    if (user) {
+      const saved = localStorage.getItem(getStorageKey());
+      if (saved) {
+        try {
+          setUserProgress(JSON.parse(saved));
+        } catch {
+          // 파싱 실패 시 무시
+        }
+      }
+    }
+  }, [user]);
+
+  // 진행 상태 저장
+  const saveProgress = (newProgress: UserProgress) => {
+    setUserProgress(newProgress);
+    localStorage.setItem(getStorageKey(), JSON.stringify(newProgress));
+  };
+
+  // 즐겨찾기 토글
+  const toggleFavorite = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    const newFavorites = userProgress.favorites.includes(sectionId)
+      ? userProgress.favorites.filter(id => id !== sectionId)
+      : [...userProgress.favorites, sectionId];
+    saveProgress({ ...userProgress, favorites: newFavorites });
+  };
+
+  // 학습완료 토글
+  const toggleCompleted = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    const newCompleted = userProgress.completed.includes(sectionId)
+      ? userProgress.completed.filter(id => id !== sectionId)
+      : [...userProgress.completed, sectionId];
+    saveProgress({ ...userProgress, completed: newCompleted });
+  };
 
   useEffect(() => {
     if (!user) {
@@ -99,6 +151,14 @@ function MockExam() {
     return 0;
   });
 
+  // 통계 계산
+  const stats = {
+    total: sections.length,
+    favorites: userProgress.favorites.length,
+    completed: userProgress.completed.length,
+    progress: sections.length > 0 ? Math.round((userProgress.completed.length / sections.length) * 100) : 0,
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -126,10 +186,54 @@ function MockExam() {
           <p className="text-purple-100 text-lg">
             코인 매매법을 학습하고 테스트해보세요
           </p>
-          <div className="mt-6 flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              {sections.length}개 섹션
+        </div>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="max-w-7xl mx-auto px-6 -mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xl">
+                📋
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+                <div className="text-gray-500 text-sm">전체 개념</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white text-xl">
+                ⭐
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-gray-900">{stats.favorites}</div>
+                <div className="text-gray-500 text-sm">즐겨찾기</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xl">
+                ✓
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-gray-900">{stats.completed}</div>
+                <div className="text-gray-500 text-sm">학습완료</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white text-xl">
+                📈
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-gray-900">{stats.progress}%</div>
+                <div className="text-gray-500 text-sm">학습 진도</div>
+              </div>
             </div>
           </div>
         </div>
@@ -176,50 +280,65 @@ function MockExam() {
 
         {/* Grid Layout - 4 columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {sortedSections.map((section) => (
-            <div
-              key={section.id}
-              onClick={() => setSelectedSection(section)}
-              className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-purple-300 transition-all duration-300 cursor-pointer"
-            >
-              {/* Card Header */}
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {section.category}
-                  </span>
-                  <div className="flex gap-1">
-                    <button className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400">
-                      ☆
-                    </button>
-                    <button className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400">
-                      ✓
-                    </button>
+          {sortedSections.map((section) => {
+            const isFavorite = userProgress.favorites.includes(section.id);
+            const isCompleted = userProgress.completed.includes(section.id);
+            
+            return (
+              <div
+                key={section.id}
+                onClick={() => setSelectedSection(section)}
+                className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-purple-300 transition-all duration-300 cursor-pointer"
+              >
+                {/* Card Header */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      {section.category}
+                    </span>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={(e) => toggleFavorite(e, section.id)}
+                        className={`w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors ${
+                          isFavorite ? 'text-yellow-500' : 'text-gray-400'
+                        }`}
+                      >
+                        {isFavorite ? '★' : '☆'}
+                      </button>
+                      <button 
+                        onClick={(e) => toggleCompleted(e, section.id)}
+                        className={`w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors ${
+                          isCompleted ? 'text-green-500' : 'text-gray-400'
+                        }`}
+                      >
+                        {isCompleted ? '✓' : '○'}
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors mb-2">
-                  {section.title}
-                </h3>
-                <p className="text-gray-500 text-sm line-clamp-2 mb-4">
-                  {section.description}
-                </p>
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors mb-2">
+                    {section.title}
+                  </h3>
+                  <p className="text-gray-500 text-sm line-clamp-2 mb-4">
+                    {section.description}
+                  </p>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-400">★★★</span>
-                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${frequencyColors[section.frequency]}`}>
-                      출제빈도: {frequencyLabels[section.frequency]}
+                  {/* Footer */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-400">★★★</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${frequencyColors[section.frequency]}`}>
+                        출제빈도: {frequencyLabels[section.frequency]}
+                      </span>
+                    </div>
+                    <span className="text-blue-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                      자세히 보기 →
                     </span>
                   </div>
-                  <span className="text-blue-600 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                    자세히 보기 →
-                  </span>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </main>
 
@@ -257,24 +376,30 @@ function MockExam() {
                 </span>
               </div>
 
+              {/* 본문 이미지 (있으면 표시) */}
+              {selectedSection.content_image_url && (
+                <div className="mb-6 rounded-xl overflow-hidden">
+                  <img 
+                    src={selectedSection.content_image_url} 
+                    alt={selectedSection.title}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
               <p className="text-gray-700 leading-relaxed text-lg mb-6">
                 {selectedSection.description}
               </p>
 
-              {/* 학습 가이드 */}
-              <div className="bg-purple-50 rounded-xl p-5 border border-purple-200 mb-4">
-                <h3 className="text-base font-semibold text-purple-700 mb-3">📚 학습 포인트</h3>
+              {/* 학습 가이드 - 붉은 계열 색상 */}
+              <div className="bg-rose-50 rounded-xl p-5 border border-rose-200">
+                <h3 className="text-base font-semibold text-rose-700 mb-3">📚 학습 포인트</h3>
                 <ul className="text-gray-700 space-y-2 text-sm">
                   <li>• 해당 전략의 핵심 원리를 이해하세요</li>
                   <li>• 실제 차트에서 패턴을 찾아보세요</li>
                   <li>• 백테스팅을 통해 승률을 확인하세요</li>
                 </ul>
               </div>
-
-              {/* 시험 시작 버튼 */}
-              <button className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all">
-                모의시험 시작하기
-              </button>
             </div>
           </div>
         </div>
@@ -284,4 +409,3 @@ function MockExam() {
 }
 
 export default MockExam;
-
