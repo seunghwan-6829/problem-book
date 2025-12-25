@@ -178,12 +178,12 @@ function MockExam() {
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+      <div className="bg-gradient-to-r from-red-600 to-rose-600 text-white">
         <div className="max-w-7xl mx-auto px-6 py-12">
           <h2 className="text-5xl font-medium mb-3">
             모의시험
           </h2>
-          <p className="text-purple-100 text-lg">
+          <p className="text-red-100 text-lg">
             코인 매매법을 학습하고 테스트해보세요
           </p>
         </div>
@@ -194,7 +194,7 @@ function MockExam() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xl">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white text-xl">
                 📋
               </div>
               <div>
@@ -288,7 +288,7 @@ function MockExam() {
               <div
                 key={section.id}
                 onClick={() => setSelectedSection(section)}
-                className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-purple-300 transition-all duration-300 cursor-pointer"
+                className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-red-300 transition-all duration-300 cursor-pointer"
               >
                 {/* Card Header */}
                 <div className="p-4">
@@ -316,7 +316,7 @@ function MockExam() {
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors mb-2">
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors mb-2">
                     {section.title}
                   </h3>
                   <p className="text-gray-500 text-sm line-clamp-2 mb-4">
@@ -353,7 +353,7 @@ function MockExam() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-red-600 to-rose-600 text-white">
               <div>
                 <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium">
                   {selectedSection.category}
