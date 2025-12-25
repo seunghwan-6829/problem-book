@@ -25,6 +25,16 @@ interface Problem {
   created_at: string;
 }
 
+interface MockExamSection {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  frequency: 'high' | 'medium' | 'low';
+  thumbnail_url?: string;
+  created_at: string;
+}
+
 interface Stats {
   totalUsers: number;
   adminCount: number;
@@ -37,9 +47,10 @@ const API_URL = 'https://backend-six-lyart-32.vercel.app';
 function Admin() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'users' | 'content'>('content');
+  const [activeTab, setActiveTab] = useState<'users' | 'content' | 'mockexam'>('content');
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [mockExamSections, setMockExamSections] = useState<MockExamSection[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,6 +66,15 @@ function Admin() {
     difficulty: 'normal' as 'normal' | 'advanced',
     thumbnail_url: '',
     content_image_url: '',
+  });
+
+  // 모의시험 폼 상태
+  const [editingMockExam, setEditingMockExam] = useState<MockExamSection | null>(null);
+  const [mockExamFormData, setMockExamFormData] = useState({
+    title: '',
+    description: '',
+    category: '기술적분석',
+    frequency: 'medium' as 'high' | 'medium' | 'low',
   });
 
   // 이미지 크롭 상태
@@ -347,6 +367,66 @@ function Admin() {
     });
   };
 
+  const resetMockExamForm = () => {
+    setEditingMockExam(null);
+    setMockExamFormData({
+      title: '',
+      description: '',
+      category: '기술적분석',
+      frequency: 'medium',
+    });
+  };
+
+  const handleSubmitMockExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!mockExamFormData.title.trim()) {
+      setSubmitMessage({ type: 'error', text: '제목을 입력해주세요.' });
+      return;
+    }
+
+    setSubmitting(true);
+    
+    // 로컬 상태에 추가 (백엔드 API가 없으므로)
+    const newSection: MockExamSection = {
+      id: editingMockExam?.id || Date.now().toString(),
+      title: mockExamFormData.title,
+      description: mockExamFormData.description,
+      category: mockExamFormData.category,
+      frequency: mockExamFormData.frequency,
+      created_at: new Date().toISOString(),
+    };
+
+    if (editingMockExam) {
+      setMockExamSections(prev => prev.map(s => s.id === editingMockExam.id ? newSection : s));
+      setSubmitMessage({ type: 'success', text: '모의시험 섹션이 수정되었습니다!' });
+    } else {
+      setMockExamSections(prev => [...prev, newSection]);
+      setSubmitMessage({ type: 'success', text: '새 모의시험 섹션이 추가되었습니다!' });
+    }
+
+    resetMockExamForm();
+    setSubmitting(false);
+    setTimeout(() => setSubmitMessage(null), 3000);
+  };
+
+  const handleEditMockExam = (section: MockExamSection) => {
+    setEditingMockExam(section);
+    setMockExamFormData({
+      title: section.title,
+      description: section.description,
+      category: section.category,
+      frequency: section.frequency,
+    });
+  };
+
+  const handleDeleteMockExam = (id: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    setMockExamSections(prev => prev.filter(s => s.id !== id));
+    setSubmitMessage({ type: 'success', text: '삭제되었습니다!' });
+    setTimeout(() => setSubmitMessage(null), 3000);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -456,7 +536,17 @@ function Admin() {
                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            콘텐츠 관리
+            매매법 관리
+          </button>
+          <button
+            onClick={() => setActiveTab('mockexam')}
+            className={`px-6 py-3 rounded-xl font-medium transition-all ${
+              activeTab === 'mockexam'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            모의시험 관리
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -779,6 +869,152 @@ function Admin() {
                             </button>
                             <button
                               onClick={() => handleDeleteProblem(problem.id)}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 모의시험 관리 탭 */}
+        {activeTab === 'mockexam' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 작성/수정 폼 */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {editingMockExam ? '모의시험 섹션 수정' : '새 모의시험 섹션 추가'}
+              </h2>
+              
+              <form onSubmit={handleSubmitMockExam} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
+                  <input
+                    type="text"
+                    value={mockExamFormData.title}
+                    onChange={(e) => setMockExamFormData({ ...mockExamFormData, title: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="섹션 제목"
+                    disabled={submitting}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
+                  <select
+                    value={mockExamFormData.category}
+                    onChange={(e) => setMockExamFormData({ ...mockExamFormData, category: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                    disabled={submitting}
+                  >
+                    <option value="기술적분석">기술적분석</option>
+                    <option value="가격분석">가격분석</option>
+                    <option value="거래량">거래량</option>
+                    <option value="단기매매">단기매매</option>
+                    <option value="중기매매">중기매매</option>
+                    <option value="리스크관리">리스크관리</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">출제 빈도</label>
+                  <select
+                    value={mockExamFormData.frequency}
+                    onChange={(e) => setMockExamFormData({ ...mockExamFormData, frequency: e.target.value as any })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                    disabled={submitting}
+                  >
+                    <option value="high">상 (자주 출제)</option>
+                    <option value="medium">중 (보통)</option>
+                    <option value="low">하 (가끔 출제)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                  <textarea
+                    value={mockExamFormData.description}
+                    onChange={(e) => setMockExamFormData({ ...mockExamFormData, description: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 h-32 text-sm"
+                    placeholder="섹션 설명을 입력하세요..."
+                    disabled={submitting}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? '저장 중...' : editingMockExam ? '수정 완료' : '추가하기'}
+                  </button>
+                  {editingMockExam && (
+                    <button
+                      type="button"
+                      onClick={resetMockExamForm}
+                      disabled={submitting}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 disabled:opacity-50"
+                    >
+                      취소
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* 모의시험 섹션 목록 */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-purple-50">
+                <h2 className="text-xl font-semibold text-gray-900">모의시험 섹션 ({mockExamSections.length})</h2>
+              </div>
+              
+              <div className="max-h-[600px] overflow-y-auto">
+                {mockExamSections.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-gray-500">
+                    등록된 모의시험 섹션이 없습니다.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {mockExamSections.map((section) => (
+                      <div key={section.id} className="px-6 py-4 hover:bg-gray-50">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-bold flex-shrink-0">
+                            {section.category.charAt(0)}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-gray-900 font-medium truncate">{section.title}</h3>
+                            <div className="flex gap-2 mt-1">
+                              <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                                {section.category}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                section.frequency === 'high' ? 'bg-red-100 text-red-700' :
+                                section.frequency === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                빈도: {section.frequency === 'high' ? '상' : section.frequency === 'medium' ? '중' : '하'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleEditMockExam(section)}
+                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs hover:bg-purple-200"
+                            >
+                              수정
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMockExam(section.id)}
                               className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200"
                             >
                               삭제
